@@ -1,0 +1,207 @@
+<span class="hljs-meta">#!/usr/bin/env node</span>
+
+<span class="hljs-keyword">const</span> { stat, readFile, writeFile, readdir } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'fs'</span>);
+<span class="hljs-keyword">const</span> { resolve, join, extname } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'path'</span>);
+
+<span class="hljs-keyword">const</span> showdown = <span class="hljs-built_in">require</span>(<span class="hljs-string">'showdown'</span>);
+<span class="hljs-keyword">const</span> converter = <span class="hljs-keyword">new</span> showdown.Converter();
+
+<span class="hljs-keyword">const</span> hljs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'highlight.js'</span>);
+
+<span class="hljs-keyword">const</span> PROJECT_ROOT = join(__dirname, <span class="hljs-string">'..'</span>);
+<span class="hljs-keyword">const</span> DATA_DIR = join(PROJECT_ROOT, <span class="hljs-string">'../clearwhite-data'</span>);
+
+<span class="hljs-keyword">const</span> readDir = <span class="hljs-function"><span class="hljs-params">dir</span> =&gt;</span>
+  <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function">(<span class="hljs-params">resolve, reject</span>) =&gt;</span> {
+    readdir(dir, (err, list) =&gt; {
+      <span class="hljs-keyword">if</span> (err) {
+        reject(err);
+        <span class="hljs-keyword">return</span>;
+      }
+
+      resolve(list);
+    });
+  });
+
+<span class="hljs-keyword">const</span> statFile = <span class="hljs-function"><span class="hljs-params">file</span> =&gt;</span>
+  <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function">(<span class="hljs-params">resolve, reject</span>) =&gt;</span> {
+    stat(file, (err, stat) =&gt; {
+      <span class="hljs-keyword">if</span> (err) {
+        reject(err);
+        <span class="hljs-keyword">return</span>;
+      }
+
+      resolve(stat);
+    });
+  });
+
+<span class="hljs-keyword">const</span> isDir = <span class="hljs-function"><span class="hljs-params">stat</span> =&gt;</span> !!stat &amp;&amp; stat.isDirectory();
+
+<span class="hljs-keyword">const</span> shouldWalk = <span class="hljs-function"><span class="hljs-params">dir</span> =&gt;</span>
+  !dir.endsWith(<span class="hljs-string">'node_modules'</span>) &amp;&amp;
+  !dir.endsWith(<span class="hljs-string">'.git'</span>) &amp;&amp;
+  !dir.endsWith(<span class="hljs-string">'.idea'</span>);
+
+<span class="hljs-keyword">const</span> walk = <span class="hljs-keyword">async</span> dir =&gt; {
+  <span class="hljs-keyword">const</span> results = [];
+
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">await</span> <span class="hljs-built_in">Promise</span>.all(
+      (<span class="hljs-keyword">await</span> readDir(dir)).map(<span class="hljs-keyword">async</span> f =&gt; {
+        <span class="hljs-keyword">try</span> {
+          <span class="hljs-keyword">const</span> file = resolve(dir, f);
+
+          <span class="hljs-keyword">if</span> (isDir(<span class="hljs-keyword">await</span> statFile(file))) {
+            <span class="hljs-keyword">if</span> (shouldWalk(file)) {
+              results.push(...(<span class="hljs-keyword">await</span> walk(file)));
+            }
+
+            <span class="hljs-keyword">return</span>;
+          }
+
+          results.push(file);
+        } <span class="hljs-keyword">catch</span> (ex) {
+          <span class="hljs-built_in">console</span>.error(ex);
+        }
+      })
+    );
+  } <span class="hljs-keyword">catch</span> (err) {
+    <span class="hljs-built_in">console</span>.error(err);
+  }
+
+  <span class="hljs-keyword">return</span> results;
+};
+
+<span class="hljs-keyword">const</span> readCode = <span class="hljs-function"><span class="hljs-params">path</span> =&gt;</span>
+  <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function">(<span class="hljs-params">resolve, reject</span>) =&gt;</span>
+    readFile(path, { <span class="hljs-attr">encoding</span>: <span class="hljs-string">'utf8'</span> }, (err, data) =&gt; {
+      <span class="hljs-keyword">if</span> (err) {
+        reject(err);
+      }
+
+      resolve(data);
+    })
+  );
+
+<span class="hljs-comment">// A unique-enough separator.</span>
+<span class="hljs-keyword">const</span> separator = <span class="hljs-string">'-_cw_-'</span>;
+
+<span class="hljs-keyword">const</span> convertMarkdownToHtml = <span class="hljs-function"><span class="hljs-params">md</span> =&gt;</span> converter.makeHtml(md);
+
+<span class="hljs-keyword">const</span> highlightedHtml = <span class="hljs-function">(<span class="hljs-params">{ name, code }</span>) =&gt;</span> {
+  <span class="hljs-keyword">if</span> (!name) {
+    <span class="hljs-keyword">return</span> hljs.fixMarkup(hljs.highlightAuto(code));
+  }
+
+  <span class="hljs-keyword">return</span> hljs.fixMarkup(hljs.highlight(name, code, <span class="hljs-literal">true</span>));
+};
+
+<span class="hljs-keyword">const</span> saveProjectFile = <span class="hljs-function">(<span class="hljs-params">name, text</span>) =&gt;</span>
+  <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function">(<span class="hljs-params">resolve, reject</span>) =&gt;</span> {
+    writeFile(join(DATA_DIR, name), text, { <span class="hljs-attr">encoding</span>: <span class="hljs-string">'utf-8'</span> }, err =&gt; {
+      <span class="hljs-keyword">if</span> (err) {
+        reject({ <span class="hljs-attr">success</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">cause</span>: err });
+        <span class="hljs-keyword">return</span>;
+      }
+
+      resolve({ <span class="hljs-attr">success</span>: <span class="hljs-literal">true</span> });
+    });
+  });
+
+<span class="hljs-keyword">const</span> saveDataFile = <span class="hljs-function">(<span class="hljs-params">name, text</span>) =&gt;</span>
+  saveProjectFile(<span class="hljs-string">`public/data/<span class="hljs-subst">${name}</span>`</span>, text);
+
+<span class="hljs-keyword">const</span> saveHighlightedHtml = <span class="hljs-keyword">async</span> ({ name, path, code }) =&gt; {
+  <span class="hljs-keyword">const</span> html = highlightedHtml({ name, code });
+  <span class="hljs-keyword">const</span> filePath = path.substring(PROJECT_ROOT.length);
+  <span class="hljs-keyword">const</span> fileNameToSave = <span class="hljs-string">`<span class="hljs-subst">${filePath.replace(<span class="hljs-regexp">/\//g</span>, separator)}</span>.html`</span>;
+
+  <span class="hljs-keyword">return</span> saveDataFile(fileNameToSave, html.value);
+};
+
+<span class="hljs-keyword">const</span> saveMarkdownHtml = <span class="hljs-keyword">async</span> ({ path, markdown }) =&gt; {
+  <span class="hljs-keyword">const</span> html = convertMarkdownToHtml(markdown);
+  <span class="hljs-keyword">const</span> filePath = path.substring(PROJECT_ROOT.length);
+  <span class="hljs-keyword">const</span> fileNameToSave = <span class="hljs-string">`<span class="hljs-subst">${filePath.replace(<span class="hljs-regexp">/\//g</span>, separator)}</span>.html`</span>;
+
+  <span class="hljs-keyword">return</span> saveDataFile(fileNameToSave, html);
+};
+
+<span class="hljs-keyword">const</span> saveInitializationCode = <span class="hljs-keyword">async</span> code =&gt;
+  saveProjectFile(<span class="hljs-string">'public/js/cw-init.js'</span>, code);
+
+<span class="hljs-keyword">const</span> createNavigationTemplate = <span class="hljs-keyword">async</span> results =&gt; {
+  <span class="hljs-keyword">const</span> fileTree = results.reduce(<span class="hljs-function">(<span class="hljs-params">acc, file</span>) =&gt;</span> {
+    <span class="hljs-keyword">const</span> newFile = file.replace(PROJECT_ROOT, <span class="hljs-string">''</span>);
+    <span class="hljs-keyword">const</span> key = newFile.substring(<span class="hljs-number">0</span>, newFile.lastIndexOf(<span class="hljs-string">'/'</span>)) || <span class="hljs-string">'/'</span>;
+    <span class="hljs-keyword">const</span> value = newFile.substring(newFile.lastIndexOf(<span class="hljs-string">'/'</span>) + <span class="hljs-number">1</span>);
+
+    acc[key] = acc[key] || [];
+
+    <span class="hljs-keyword">if</span> (value !== <span class="hljs-string">'.DS_Store'</span> &amp;&amp; value !== <span class="hljs-string">'yarn.lock'</span> &amp;&amp; value !== <span class="hljs-string">'package-lock.json'</span>) {
+      acc[key].push(value);
+    }
+
+    <span class="hljs-keyword">return</span> acc;
+  }, {});
+
+  <span class="hljs-keyword">const</span> fileTreeJson = <span class="hljs-built_in">JSON</span>.stringify(fileTree);
+
+  <span class="hljs-keyword">const</span> cwqCode = <span class="hljs-string">`/*! auto-generated by clearwhite https://github.com/jsbites/clearwhite */
+window._cwq = window._cwq || [];window._cwq.push(['cw:tree:init', <span class="hljs-subst">${fileTreeJson}</span>]);`</span>;
+
+  <span class="hljs-keyword">await</span> saveInitializationCode(cwqCode);
+};
+
+<span class="hljs-keyword">const</span> run = <span class="hljs-keyword">async</span> () =&gt; {
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">const</span> results = <span class="hljs-keyword">await</span> walk(PROJECT_ROOT);
+    <span class="hljs-keyword">await</span> createNavigationTemplate(results);
+
+    results.forEach(<span class="hljs-keyword">async</span> path =&gt; {
+      <span class="hljs-keyword">const</span> sourceCode = <span class="hljs-keyword">await</span> readCode(path);
+      <span class="hljs-keyword">const</span> extension = extname(path);
+
+      <span class="hljs-keyword">if</span> (path.indexOf(<span class="hljs-string">'yarn.lock'</span>) &gt; <span class="hljs-number">-1</span>) {
+        <span class="hljs-keyword">return</span>;
+      }
+
+      <span class="hljs-keyword">if</span> (path.indexOf(<span class="hljs-string">'package-lock.json'</span>) &gt; <span class="hljs-number">-1</span>) {
+        <span class="hljs-keyword">return</span>;
+      }
+
+      <span class="hljs-keyword">if</span> (path.indexOf(<span class="hljs-string">'.DS_Store'</span>) &gt; <span class="hljs-number">-1</span>) {
+        <span class="hljs-keyword">return</span>;
+      }
+
+      <span class="hljs-keyword">switch</span> (extension.toLowerCase()) {
+        <span class="hljs-keyword">case</span> <span class="hljs-string">'.md'</span>:
+          <span class="hljs-keyword">await</span> saveMarkdownHtml({ path, <span class="hljs-attr">markdown</span>: sourceCode });
+          <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">case</span> <span class="hljs-string">'.css'</span>:
+          <span class="hljs-keyword">await</span> saveHighlightedHtml({ <span class="hljs-attr">name</span>: <span class="hljs-string">'css'</span>, path, <span class="hljs-attr">code</span>: sourceCode });
+          <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">case</span> <span class="hljs-string">'.js'</span>:
+          <span class="hljs-keyword">await</span> saveHighlightedHtml({ <span class="hljs-attr">name</span>: <span class="hljs-string">'js'</span>, path, <span class="hljs-attr">code</span>: sourceCode });
+          <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">case</span> <span class="hljs-string">'.html'</span>:
+          <span class="hljs-keyword">await</span> saveHighlightedHtml({ <span class="hljs-attr">name</span>: <span class="hljs-string">'html'</span>, path, <span class="hljs-attr">code</span>: sourceCode });
+          <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">case</span> <span class="hljs-string">'.sass'</span>:
+          <span class="hljs-keyword">await</span> saveHighlightedHtml({ <span class="hljs-attr">name</span>: <span class="hljs-string">'sass'</span>, path, <span class="hljs-attr">code</span>: sourceCode });
+          <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">default</span>:
+          <span class="hljs-keyword">await</span> saveHighlightedHtml({ path, <span class="hljs-attr">code</span>: sourceCode });
+          <span class="hljs-keyword">break</span>;
+      }
+
+      <span class="hljs-comment">// save the highlighted markup to public/cw/$path$extension.html</span>
+      <span class="hljs-comment">// markdown files are an exception:</span>
+      <span class="hljs-comment">//     convert them directly to html public/cw/$path.html by showdown or something.</span>
+    });
+  } <span class="hljs-keyword">catch</span> (err) {
+    <span class="hljs-built_in">console</span>.error(err);
+  }
+};
+
+run().then(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {});

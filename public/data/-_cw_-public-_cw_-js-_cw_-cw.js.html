@@ -1,0 +1,248 @@
+(<span class="hljs-function"><span class="hljs-params">window</span> =&gt;</span> {
+  <span class="hljs-built_in">window</span>._cwq = <span class="hljs-built_in">window</span>._cwq || [];
+
+  <span class="hljs-comment">// console.log('command queue', window._cwq);</span>
+
+  <span class="hljs-keyword">const</span> root = <span class="hljs-built_in">document</span>.querySelector(<span class="hljs-string">'[data-clearwhite-root]'</span>);
+  <span class="hljs-keyword">const</span> style = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">'style'</span>);
+
+  <span class="hljs-keyword">const</span> COLOR_MAIN_BG = <span class="hljs-string">'#ffffff'</span>;
+  <span class="hljs-keyword">const</span> COLOR_ASIDE_BG = <span class="hljs-string">'#f0f0f0'</span>;
+  <span class="hljs-keyword">const</span> WIDTH_MAIN_MAX = <span class="hljs-string">'850px'</span>;
+  <span class="hljs-keyword">const</span> WIDTH_MAIN_ASIDE = <span class="hljs-string">'240px'</span>;
+  <span class="hljs-keyword">const</span> GUTTER = <span class="hljs-number">7</span>;
+
+  <span class="hljs-comment">// move some of the other colors to constants too.</span>
+  <span class="hljs-comment">// they will eventually be sass constants.</span>
+  style.innerHTML = <span class="hljs-string">`.clw-wrapper {display: grid;grid-gap: <span class="hljs-subst">${<span class="hljs-number">2</span> *
+    GUTTER}</span>px;grid-template-areas: 'aside main';grid-template-columns: <span class="hljs-subst">${WIDTH_MAIN_ASIDE}</span> 1fr;}
+.clw-main {max-width: <span class="hljs-subst">${WIDTH_MAIN_MAX}</span>;background: <span class="hljs-subst">${COLOR_MAIN_BG}</span>;}
+.clw-aside {grid-area: aside;padding-top: <span class="hljs-subst">${GUTTER}</span>px;background: <span class="hljs-subst">${COLOR_ASIDE_BG}</span>;}
+.clw-main {grid-area: main;padding: <span class="hljs-subst">${GUTTER}</span>px; overflow: auto;}
+.clw-fh {font-size: 18px; padding-left: 7px; padding-right: 7px; margin: 0;padding-top: 7px; padding-bottom: 0;}
+.clw-fl {color: #000000; cursor: default; text-decoration: none; border-right: 6px #f0f0f0 solid; padding-left: 21px; padding-right: 14px; padding-top: 7px; padding-bottom: 7px; display:block;transition: all .35s ease-out}
+.clw-fl:hover {background: #ffffff; border-right: 6px #444444 solid;}
+.clw-fb {margin: 0}
+.clw-selected {background: #ffffff; border-right: 6px #ffa500 solid; pointer-events: none;}
+.clw-selected:hover {background: #ffffff; border-right: 6px #ffa500 solid;}
+.clw-aside {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  }
+  
+  .hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0.5em;
+  background: white;
+  color: black;
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-variable {
+  color: #008000;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-name,
+.hljs-tag {
+  color: #00f;
+}
+
+.hljs-string,
+.hljs-title,
+.hljs-section,
+.hljs-attribute,
+.hljs-literal,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-addition {
+  color: #a31515;
+}
+
+.hljs-deletion,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-meta {
+  color: #2b91af;
+}
+
+.hljs-doctag {
+  color: #808080;
+}
+
+.hljs-attr {
+  color: #f00;
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+  color: #00b0e8;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+.clw-nohighlight * {
+  color: #000000 !important;
+}
+`</span>;
+
+  <span class="hljs-built_in">document</span>.getElementsByTagName(<span class="hljs-string">'head'</span>)[<span class="hljs-number">0</span>].appendChild(style);
+
+  root.innerHTML = <span class="hljs-string">`&lt;div class="clw-wrapper"&gt;&lt;article class="clw-main clw-panel"&gt;&lt;/article&gt;&lt;aside class="clw-aside clw-panel"&gt;&lt;/aside&gt;&lt;/div&gt;`</span>;
+
+  <span class="hljs-built_in">window</span>._cwq.forEach(<span class="hljs-function"><span class="hljs-params">tuple</span> =&gt;</span> {
+    <span class="hljs-keyword">const</span> command = tuple[<span class="hljs-number">0</span>];
+    <span class="hljs-keyword">const</span> payload = tuple[<span class="hljs-number">1</span>];
+
+    <span class="hljs-keyword">if</span> (command !== <span class="hljs-string">'cw:tree:init'</span>) {
+      <span class="hljs-keyword">return</span>;
+    }
+
+    <span class="hljs-keyword">const</span> sections = <span class="hljs-built_in">Object</span>.keys(payload).sort();
+
+    <span class="hljs-keyword">const</span> frag = <span class="hljs-built_in">document</span>.createDocumentFragment();
+
+    sections.forEach(<span class="hljs-function"><span class="hljs-params">section</span> =&gt;</span> {
+      <span class="hljs-keyword">const</span> h2 = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">'h2'</span>);
+      h2.appendChild(<span class="hljs-built_in">document</span>.createTextNode(section));
+      h2.className = <span class="hljs-string">'clw-fh'</span>;
+      frag.appendChild(h2);
+
+      <span class="hljs-built_in">console</span>.log(payload[section]);
+
+      <span class="hljs-keyword">const</span> files = payload[section];
+
+      <span class="hljs-keyword">const</span> isMarkdown = <span class="hljs-function"><span class="hljs-params">a</span> =&gt;</span> a.indexOf(<span class="hljs-string">'.md'</span>) &gt; <span class="hljs-number">-1</span>;
+
+      files
+        .sort(<span class="hljs-function">(<span class="hljs-params">a, b</span>) =&gt;</span> {
+          <span class="hljs-keyword">if</span> (isMarkdown(a) &amp;&amp; isMarkdown(b)) {
+            <span class="hljs-keyword">if</span> (a === <span class="hljs-string">'README.md'</span>) {
+              <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+            }
+
+            <span class="hljs-keyword">if</span> (b === <span class="hljs-string">'README.md'</span>) {
+              <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>;
+            }
+
+            <span class="hljs-keyword">return</span> a &gt; b ? <span class="hljs-number">1</span> : <span class="hljs-number">-1</span>;
+          }
+
+          <span class="hljs-keyword">if</span> (isMarkdown(a)) {
+            <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+          }
+
+          <span class="hljs-keyword">if</span> (isMarkdown(b)) {
+            <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>;
+          }
+
+          <span class="hljs-keyword">return</span> a &gt; b ? <span class="hljs-number">1</span> : <span class="hljs-number">-1</span>;
+        })
+        .forEach(<span class="hljs-function"><span class="hljs-params">file</span> =&gt;</span> {
+          <span class="hljs-keyword">const</span> p = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">'p'</span>);
+          p.className = <span class="hljs-string">'clw-fb'</span>;
+          <span class="hljs-keyword">const</span> a = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">'a'</span>);
+          a.href = <span class="hljs-string">'javascript:void(0)'</span>;
+          a.className = <span class="hljs-string">'clw-fl'</span>;
+          a.setAttribute(<span class="hljs-string">'draggable'</span>, <span class="hljs-literal">false</span>);
+          a.setAttribute(<span class="hljs-string">'data-path'</span>, section);
+          a.setAttribute(<span class="hljs-string">'data-file'</span>, file);
+
+          <span class="hljs-keyword">const</span> t = <span class="hljs-built_in">document</span>.createTextNode(file);
+          a.appendChild(t);
+          p.appendChild(a);
+          frag.appendChild(p);
+        });
+    });
+
+    <span class="hljs-keyword">const</span> aside = <span class="hljs-built_in">document</span>.querySelector(<span class="hljs-string">'aside.clw-aside'</span>);
+
+    <span class="hljs-keyword">const</span> findTarget = <span class="hljs-function"><span class="hljs-params">evt</span> =&gt;</span> {
+      <span class="hljs-keyword">if</span> (evt.target.nodeName.toLowerCase() === <span class="hljs-string">'a'</span>) {
+        <span class="hljs-keyword">return</span> evt.target;
+      }
+
+      <span class="hljs-keyword">if</span> (evt.target.nodeName.toLowerCase() === <span class="hljs-string">'p'</span>) {
+        <span class="hljs-keyword">return</span> evt.target.querySelector(<span class="hljs-string">'a'</span>);
+      }
+
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">null</span>;
+    };
+
+    <span class="hljs-keyword">const</span> selectNode = <span class="hljs-function"><span class="hljs-params">target</span> =&gt;</span> {
+      <span class="hljs-keyword">const</span> treeRoot = target.parentNode.parentNode;
+      treeRoot
+        .querySelectorAll(<span class="hljs-string">'a'</span>)
+        .forEach(<span class="hljs-function"><span class="hljs-params">node</span> =&gt;</span> node.classList.remove(<span class="hljs-string">'clw-selected'</span>));
+      target.classList.add(<span class="hljs-string">'clw-selected'</span>);
+    };
+
+    aside.onclick = <span class="hljs-function"><span class="hljs-params">evt</span> =&gt;</span> {
+      evt.preventDefault();
+
+      <span class="hljs-keyword">const</span> target = findTarget(evt);
+
+      <span class="hljs-keyword">if</span> (!target) {
+        <span class="hljs-keyword">return</span>;
+      }
+
+      selectNode(target);
+
+      <span class="hljs-keyword">const</span> path =
+        target.getAttribute(<span class="hljs-string">'data-path'</span>) === <span class="hljs-string">'/'</span>
+          ? <span class="hljs-string">''</span>
+          : target.getAttribute(<span class="hljs-string">'data-path'</span>);
+      <span class="hljs-keyword">const</span> file = target.getAttribute(<span class="hljs-string">'data-file'</span>);
+
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'file'</span>, file);
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'path'</span>, path);
+
+      fetch(<span class="hljs-string">'/data/'</span> + <span class="hljs-string">`<span class="hljs-subst">${path}</span>/<span class="hljs-subst">${file}</span>`</span>.replace(<span class="hljs-regexp">/\//g</span>, <span class="hljs-string">'-_cw_-'</span>) + <span class="hljs-string">'.html'</span>)
+        .then(<span class="hljs-function"><span class="hljs-params">res</span> =&gt;</span> {
+          <span class="hljs-keyword">return</span> res.text();
+        })
+        .then(<span class="hljs-function"><span class="hljs-params">html</span> =&gt;</span> {
+            <span class="hljs-keyword">if</span> (file.endsWith(<span class="hljs-string">'.md'</span>)) {
+              <span class="hljs-built_in">document</span>.querySelector(<span class="hljs-string">'article.clw-main'</span>).innerHTML = html;
+              <span class="hljs-keyword">return</span>;
+
+            }
+
+          <span class="hljs-keyword">const</span> codeClassname = file.endsWith(<span class="hljs-string">'.txt'</span>) ? <span class="hljs-string">'clw-nohighlight'</span> : <span class="hljs-string">''</span>;
+
+          <span class="hljs-built_in">document</span>.querySelector(<span class="hljs-string">'article.clw-main'</span>).innerHTML =
+              <span class="hljs-string">`&lt;pre&gt;&lt;code class="<span class="hljs-subst">${codeClassname}</span>"&gt;`</span> + html + <span class="hljs-string">'&lt;/code&gt;&lt;/pre&gt;'</span>;
+
+        })
+        .catch(<span class="hljs-function"><span class="hljs-params">err</span> =&gt;</span> {
+          <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'problem'</span>);
+          <span class="hljs-built_in">console</span>.log(err);
+        });
+    };
+
+    aside.ondragstart = <span class="hljs-function"><span class="hljs-params">evt</span> =&gt;</span> {
+      evt.preventDefault();
+    };
+
+    aside.appendChild(frag);
+
+    aside.querySelector(<span class="hljs-string">'a'</span>).click();
+
+    <span class="hljs-comment">// debugger;</span>
+  });
+})(<span class="hljs-built_in">window</span>);
